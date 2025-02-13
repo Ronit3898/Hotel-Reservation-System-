@@ -1,1 +1,130 @@
+CREATE TABLE student (
+	id INT PRIMARY KEY,
+    name VARCHAR(50),
+    age INT NOT NULL
+);
+
+INSERT INTO student VALUES(1, "RONIT", 26);
+INSERT INTO student VALUES(2, "SHRADHA", 26);
+
+SELECT * FROM student;
+
+-- Create Database
+CREATE DATABASE HotelReservation;
+USE HotelReservation;
+
+-- Guests Table
+CREATE TABLE Guests (
+    guest_id INT AUTO_INCREMENT PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    phone VARCHAR(20),
+    address TEXT
+);
+
+-- Rooms Table
+CREATE TABLE Rooms (
+    room_id INT AUTO_INCREMENT PRIMARY KEY,
+    room_number VARCHAR(10) UNIQUE NOT NULL,
+    room_type ENUM('Single', 'Double', 'Suite') NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    status ENUM('Available', 'Booked') DEFAULT 'Available'
+);
+
+-- Reservations Table
+CREATE TABLE Reservations (
+    reservation_id INT AUTO_INCREMENT PRIMARY KEY,
+    guest_id INT,
+    room_id INT,
+    check_in DATE NOT NULL,
+    check_out DATE NOT NULL,
+    status ENUM('Confirmed', 'Cancelled', 'Completed') DEFAULT 'Confirmed',
+    FOREIGN KEY (guest_id) REFERENCES Guests(guest_id) ON DELETE CASCADE,
+    FOREIGN KEY (room_id) REFERENCES Rooms(room_id) ON DELETE CASCADE
+);
+
+-- Payments Table
+CREATE TABLE Payments (
+    payment_id INT AUTO_INCREMENT PRIMARY KEY,
+    reservation_id INT,
+    amount DECIMAL(10,2) NOT NULL,
+    payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    payment_status ENUM('Pending', 'Completed', 'Failed') DEFAULT 'Pending',
+    FOREIGN KEY (reservation_id) REFERENCES Reservations(reservation_id) ON DELETE CASCADE
+);
+
+-- Insert Guests
+INSERT INTO Guests (full_name, email, phone, address) VALUES 
+('John Doe', 'john@example.com', '1234567890', '123 Street, NY'),
+('Jane Smith', 'jane@example.com', '9876543210', '456 Avenue, LA');
+
+-- Insert Rooms
+INSERT INTO Rooms (room_number, room_type, price, status) VALUES 
+('101', 'Single', 100.00, 'Available'),
+('102', 'Double', 150.00, 'Available'),
+('201', 'Suite', 250.00, 'Available');
+
+-- Insert Reservations
+INSERT INTO Reservations (guest_id, room_id, check_in, check_out, status) VALUES 
+(1, 1, '2025-03-01', '2025-03-05', 'Confirmed'),
+(2, 3, '2025-04-10', '2025-04-15', 'Confirmed');
+
+-- Insert Payments
+INSERT INTO Payments (reservation_id, amount, payment_status) VALUES 
+(1, 500.00, 'Completed'),
+(2, 1250.00, 'Pending'); 
+
+DELIMITER //
+
+CREATE PROCEDURE BookRoom(IN guestID INT, IN roomID INT, IN checkIn DATE, IN checkOut DATE)
+BEGIN
+    DECLARE roomStatus VARCHAR(20);
+    
+    -- Check if the room is available
+    SELECT status INTO roomStatus FROM Rooms WHERE room_id = roomID;
+    
+    IF roomStatus = 'Available' THEN
+        -- Insert reservation
+        INSERT INTO Reservations (guest_id, room_id, check_in, check_out, status) 
+        VALUES (guestID, roomID, checkIn, checkOut, 'Confirmed');
+        
+        -- Update room status
+        UPDATE Rooms SET status = 'Booked' WHERE room_id = roomID;
+        
+        SELECT 'Room successfully booked' AS message;
+    ELSE
+        SELECT 'Room is not available' AS message;
+    END IF;
+END //
+
+DELIMITER ;
+
+
+DELIMITER //
+
+CREATE PROCEDURE ProcessPayment(IN resID INT, IN payAmount DECIMAL(10,2))
+BEGIN
+    DECLARE resStatus VARCHAR(20);
+    
+    -- Check if reservation exists
+    SELECT status INTO resStatus FROM Reservations WHERE reservation_id = resID;
+    
+    IF resStatus = 'Confirmed' THEN
+        -- Insert payment record
+        INSERT INTO Payments (reservation_id, amount, payment_status) 
+        VALUES (resID, payAmount, 'Completed');
+        
+        SELECT 'Payment processed successfully' AS message;
+    ELSE
+        SELECT 'Invalid reservation' AS message;
+    END IF;
+END //
+
+DELIMITER ;
+
+
+
+
+
+
 
